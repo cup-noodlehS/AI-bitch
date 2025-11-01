@@ -71,7 +71,7 @@ class OverlayDrawer:
             color = (0, 0, 255)
         
         # Draw bounding box
-        thickness = 3 if is_violation else 2
+        thickness = 2 if is_violation else 1
         cv2.rectangle(frame, (x1, y1), (x2, y2), color, thickness)
         
         # Build label
@@ -89,8 +89,8 @@ class OverlayDrawer:
         
         # Draw label background
         font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 0.6
-        font_thickness = 2
+        font_scale = 0.5
+        font_thickness = 1
         (label_w, label_h), baseline = cv2.getTextSize(label, font, font_scale, font_thickness)
         
         # Position label above box
@@ -125,8 +125,8 @@ class OverlayDrawer:
         
         # Choose color based on violation status
         color = self.LANE_COLOR_VIOLATION if has_violation else self.LANE_COLOR_NORMAL
-        thickness = 3 if has_violation else 2
-        
+        thickness = 1
+
         # Draw polygon outline
         cv2.polylines(frame, [lane_polygon], isClosed=True, color=color, thickness=thickness)
         
@@ -135,24 +135,25 @@ class OverlayDrawer:
         cv2.fillPoly(overlay, [lane_polygon], color)
         cv2.addWeighted(overlay, 0.1, frame, 0.9, 0, frame)
         
-        # Add label at centroid
+        # Add label at bottom of polygon
         centroid_x = int(np.mean(lane_polygon[:, 0]))
-        centroid_y = int(np.mean(lane_polygon[:, 1]))
-        
+        # Find the maximum Y coordinate (bottom-most point)
+        bottom_y = int(np.max(lane_polygon[:, 1]))
+
         label = "TRUCK/BUS LANE"
         if has_violation:
             label += " - VIOLATION!"
-        
+
         font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 0.7
-        font_thickness = 2
-        
-        # Draw label with background
+        font_scale = 0.6
+        font_thickness = 1
+
+        # Draw label with background at bottom
         (label_w, label_h), baseline = cv2.getTextSize(label, font, font_scale, font_thickness)
         label_x = centroid_x - label_w // 2
-        label_y = centroid_y - label_h // 2
-        
-        cv2.rectangle(frame, 
+        label_y = bottom_y - 10  # Position slightly above the bottom edge
+
+        cv2.rectangle(frame,
                      (label_x - 5, label_y - label_h - 5),
                      (label_x + label_w + 5, label_y + 5),
                      (0, 0, 0), -1)
@@ -201,8 +202,8 @@ class OverlayDrawer:
             info_lines.append(f"FPS: {fps:.1f}")
         
         font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 0.6
-        font_thickness = 2
+        font_scale = 0.5
+        font_thickness = 1
         color = (255, 255, 255)
         
         y_offset = 30

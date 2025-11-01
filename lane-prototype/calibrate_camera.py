@@ -1,6 +1,7 @@
 """
 Interactive camera calibration tool.
-Click 4 points on the road plane and enter their real-world coordinates.
+Click 4 points on the road plane to calibrate the camera.
+Uses default 3.5m x 10m world coordinates (standard lane dimensions).
 """
 import argparse
 import cv2
@@ -18,25 +19,21 @@ class CameraCalibrationTool:
         
         self.display_image = self.image.copy()
         self.image_points = []  # Pixel coordinates
-        self.world_points = []  # Meter coordinates
         self.max_points = 4
-        
+
         # Load existing config
         self.config = {}
         if os.path.exists(config_path):
             with open(config_path, 'r') as f:
                 self.config = yaml.safe_load(f)
-            
+
             # Load existing calibration if present
             if 'homography' in self.config and self.config['homography']:
                 hom = self.config['homography']
                 if 'image_points' in hom:
                     self.image_points = [tuple(p) for p in hom['image_points']]
-                if 'world_points' in hom:
-                    self.world_points = [tuple(p) for p in hom['world_points']]
-        
+
         self.window_name = 'Camera Calibration - Click 4 Road Points'
-        self.current_world_input = None
     
     def mouse_callback(self, event, x, y, flags, param):
         """Handle mouse clicks for selecting points."""
@@ -44,44 +41,10 @@ class CameraCalibrationTool:
             if len(self.image_points) < self.max_points:
                 # Add image point
                 self.image_points.append((x, y))
-                print(f"\nPoint {len(self.image_points)} clicked at pixel: ({x}, {y})")
-                
-                # Prompt for world coordinates
-                self.prompt_world_coordinates(len(self.image_points))
-                
+                print(f"Point {len(self.image_points)}: ({x}, {y})")
                 self.update_display()
             else:
                 print(f"Already have {self.max_points} points. Press 'r' to reset.")
-    
-    def prompt_world_coordinates(self, point_num):
-        """Prompt user to enter world coordinates for the clicked point."""
-        print(f"\nEnter real-world coordinates for Point {point_num}:")
-        print("  (These are the actual distances in METERS on the road)")
-        
-        while True:
-            try:
-                x_str = input(f"  X coordinate (meters, horizontal): ")
-                y_str = input(f"  Y coordinate (meters, depth/forward): ")
-
-                x_world = float(x_str)
-                y_world = float(y_str)
-                
-                self.world_points.append((x_world, y_world))
-                print(f"  Point {point_num}: Pixel({self.image_points[-1][0]}, {self.image_points[-1][1]}) = World({x_world}m, {y_world}m)")
-                break
-            except ValueError:
-                print("  Invalid input. Please enter numbers.")
-            except (KeyboardInterrupt, EOFError):
-                print("\n  Skipped. You can reset with 'r'.")
-                # Remove the image point we just added
-                if len(self.image_points) > 0:
-                    self.image_points.pop()
-                break
-            except Exception as e:
-                print(f"  Error: {e}. Please try again.")
-                if len(self.image_points) > 0:
-                    self.image_points.pop()
-                break
     
     def update_display(self):
         """Update the display with current points."""
@@ -91,33 +54,42 @@ class CameraCalibrationTool:
         for i, point in enumerate(self.image_points):
             # Draw circle
             cv2.circle(self.display_image, point, 8, (0, 255, 0), -1)
-            
+
             # Draw point number
-            cv2.putText(self.display_image, str(i + 1), 
+            cv2.putText(self.display_image, str(i + 1),
                        (point[0] + 12, point[1] + 5),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-            
-            # Draw world coordinates if available
-            if i < len(self.world_points):
-                world_text = f"({self.world_points[i][0]:.1f}m, {self.world_points[i][1]:.1f}m)"
-                cv2.putText(self.display_image, world_text,
-                           (point[0] + 12, point[1] + 25),
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
         
         # Draw lines connecting points
         if len(self.image_points) > 1:
+            # Default world coordinates for labeling
+            # Order: bottom-left, bottom-right, top-right, top-left
+            line_labels = ["3.5m", "10m", "3.5m", "10m"]  # bottom, right, top, left
+
             for i in range(len(self.image_points)):
                 if i < len(self.image_points) - 1 or len(self.image_points) == self.max_points:
                     pt1 = self.image_points[i]
                     pt2 = self.image_points[(i + 1) % len(self.image_points)]
                     cv2.line(self.display_image, pt1, pt2, (0, 255, 0), 2)
+
+                    # Draw measurement labels when all 4 points are placed
+                    if len(self.image_points) == self.max_points:
+                        # Calculate midpoint
+                        mid_x = (pt1[0] + pt2[0]) // 2
+                        mid_y = (pt1[1] + pt2[1]) // 2
+
+                        # Draw label
+                        label = line_labels[i]
+                        cv2.putText(self.display_image, label,
+                                   (mid_x + 10, mid_y - 10),
+                                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
         
         # Instructions
         points_remaining = self.max_points - len(self.image_points)
         if points_remaining > 0:
             instructions = [
                 f"Click {points_remaining} more point(s) on the ROAD PLANE",
-                "Then enter real-world coordinates in console",
+                "Using default 3.5m x 10m calibration area",
                 "Press 's' to save | 'r' to reset | 'q' to quit"
             ]
         else:
@@ -134,32 +106,42 @@ class CameraCalibrationTool:
     
     def save_config(self):
         """Save calibration to config file."""
-        if len(self.image_points) != self.max_points or len(self.world_points) != self.max_points:
-            print(f"Need {self.max_points} complete points. Currently have {len(self.image_points)} image points and {len(self.world_points)} world points.")
+        if len(self.image_points) != self.max_points:
+            print(f"Need {self.max_points} points. Currently have {len(self.image_points)}.")
             return False
-        
+
+        # Use default world coordinates: 3.5m (lane width) x 10m (depth)
+        # Points should form a rectangle on the road plane
+        default_world_points = [
+            [0, 0],      # Bottom-left (origin)
+            [3.5, 0],    # Bottom-right (one lane width)
+            [3.5, 10],   # Top-right (10m forward)
+            [0, 10]      # Top-left (10m forward)
+        ]
+
         # Update config
         self.config['homography'] = {
             'image_points': [[int(p[0]), int(p[1])] for p in self.image_points],
-            'world_points': [[float(p[0]), float(p[1])] for p in self.world_points]
+            'world_points': default_world_points
         }
-        
+
         # Save to file
         with open(self.config_path, 'w') as f:
             yaml.dump(self.config, f, default_flow_style=False, sort_keys=False)
-        
+
         print(f"\nSaved camera calibration to: {self.config_path}")
         print("\nCalibration Summary:")
+        print("  Using default world coordinates (3.5m x 10m rectangle):")
         for i in range(len(self.image_points)):
-            print(f"  Point {i+1}: Pixel{self.image_points[i]} -> World({self.world_points[i][0]}m, {self.world_points[i][1]}m)")
+            print(f"  Point {i+1}: Pixel{self.image_points[i]} -> World({default_world_points[i][0]}m, {default_world_points[i][1]}m)")
+        print("\nNote: You can manually edit the YAML file to customize world coordinates if needed.")
         return True
     
     def reset(self):
         """Reset all points."""
         self.image_points = []
-        self.world_points = []
         self.update_display()
-        print("\nCalibration reset")
+        print("Polygon reset")
     
     def run(self):
         """Run the interactive calibration."""
@@ -175,15 +157,13 @@ class CameraCalibrationTool:
         print(f"Config: {self.config_path}")
         print(f"Image size: {self.image.shape[1]}x{self.image.shape[0]}")
         print("\nInstructions:")
-        print("  1. Click 4 points on the ROAD PLANE (not on walls/signs)")
-        print("  2. For each point, enter its real-world coordinates in METERS")
-        print("  3. Use known distances (lane width, markings, etc.)")
-        print("  4. Press 's' to save, 'r' to reset, 'q' to quit")
+        print("  1. Click 4 points on the ROAD PLANE forming a rectangle")
+        print("  2. Default calibration uses a 3.5m x 10m area (standard lane)")
+        print("  3. Press 's' to save, 'r' to reset, 'q' to quit")
         print("\nTips:")
-        print("  - Choose points that form a rectangle or quadrilateral")
-        print("  - Standard lane width: 3.5m")
-        print("  - Use Google Maps to measure distances")
+        print("  - Click points in order: bottom-left, bottom-right, top-right, top-left")
         print("  - All points must be on the same flat road surface")
+        print("  - You can manually edit the YAML file to customize world coordinates")
         print("="*70 + "\n")
         
         while True:
