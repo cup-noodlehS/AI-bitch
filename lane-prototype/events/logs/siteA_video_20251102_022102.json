@@ -1,0 +1,20 @@
+{
+  "timestamp": "2025-11-02T02:21:02.780473",
+  "media": "footage/siteA/test_short.mp4",
+  "site_config": "footage/siteA/config_test.yaml",
+  "total_frames": 148,
+  "fps": 29.714,
+  "violations": [
+    {
+      "event_id": "siteA_00000064_t17",
+      "media": "footage/siteA/test_short.mp4",
+      "timestamp_ms": 2153.8668641044624,
+      "frame_num": 64,
+      "track_id": 17,
+      "class": "car",
+      "violation": "TRUCK_BUS_LANE",
+      "dwell_frames": 10,
+      "speed_kph": 0.0
+    }
+  ]
+}

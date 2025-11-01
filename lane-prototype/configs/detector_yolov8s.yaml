@@ -1,0 +1,6 @@
+model: yolov8s.pt
+img_size: 640
+conf_thres: 0.25
+iou_nms: 0.7
+classes_keep: [2, 3, 5, 7]  # car, motorcycle, bus, truck
+

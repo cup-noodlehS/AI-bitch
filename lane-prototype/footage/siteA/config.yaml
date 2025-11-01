@@ -1,0 +1,44 @@
+fps_override: null
+homography:
+  image_points:
+  - - 100
+    - 400
+  - - 540
+    - 400
+  - - 640
+    - 300
+  - - 0
+    - 300
+  world_points:
+  - - 0
+    - 0
+  - - 10
+    - 0
+  - - 10
+    - 5
+  - - 0
+    - 5
+truck_bus_lane_polygon:
+- - 108
+  - 475
+- - 299
+  - 474
+- - 211
+  - 8
+- - 194
+  - 7
+violation:
+  dwell_frames: 10
+  classes_truck_ok:
+  - truck
+  - bus
+speed:
+  smoothing: ema
+  ema_alpha: 0.2
+  min_pixels_per_sec: 3
+  report_every_n_frames: 3
+overlay:
+  draw_speed: true
+  draw_lane_rect: true
+  draw_track_ids: true
+  show_live_preview: true

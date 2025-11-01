@@ -1,0 +1,29 @@
+# Test configuration - NO media paths here!
+fps_override: null
+
+# Road-plane calibration (homography-based)
+homography:
+  image_points: [[100, 400], [540, 400], [640, 300], [0, 300]]
+  world_points: [[0, 0], [10, 0], [10, 5], [0, 5]]
+
+# Truck/Bus lane rectangle (in image pixels)
+truck_bus_lane_rect: { x: 820, y: 300, w: 220, h: 380 }
+
+# Rule thresholds
+violation:
+  dwell_frames: 10
+  classes_truck_ok: ["truck", "bus"]
+
+speed:
+  smoothing: "ema"
+  ema_alpha: 0.2
+  min_pixels_per_sec: 3
+  report_every_n_frames: 3
+
+# Overlay settings
+overlay:
+  draw_speed: true
+  draw_lane_rect: true
+  draw_track_ids: true
+  show_live_preview: false  # Disabled for automated testing
+
